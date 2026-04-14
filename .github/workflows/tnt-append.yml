@@ -19,12 +19,14 @@ jobs:
 
       - name: Fetch Trello JSON and append to Sheets
         env:
-          TRELLO_API_KEY:              ${{ secrets.TRELLO_API_KEY }}
-          TRELLO_TOKEN:                ${{ secrets.TRELLO_TOKEN }}
-          TRELLO_BOARD_IDS:            ${{ secrets.TRELLO_BOARD_IDS }}
-          GOOGLE_SPREADSHEET_ID:       ${{ secrets.GOOGLE_SPREADSHEET_ID }}
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          TRELLO_API_KEY:                ${{ secrets.TRELLO_API_KEY }}
+          TRELLO_TOKEN:                  ${{ secrets.TRELLO_TOKEN }}
+          TRELLO_BOARD_IDS:              ${{ secrets.TRELLO_BOARD_IDS }}
+          GOOGLE_SPREADSHEET_ID:         ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_BASE64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: |
+          echo "$GOOGLE_SERVICE_ACCOUNT_BASE64" | base64 -d > /tmp/gcloud-key.json
+          export GOOGLE_SERVICE_ACCOUNT_JSON="$(cat /tmp/gcloud-key.json)"
           mkdir -p exports
           curl -s "https://api.trello.com/1/boards/${TRELLO_BOARD_IDS}?key=${TRELLO_API_KEY}&token=${TRELLO_TOKEN}&actions=all&actions_limit=1000&cards=all&members=all&lists=all" \
             -o exports/board_today.json
