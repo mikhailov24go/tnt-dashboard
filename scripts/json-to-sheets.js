@@ -47,13 +47,10 @@ if (!fs.existsSync(inputFile)) {
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
 let CREDENTIALS = null;
 try {
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    CREDENTIALS = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-  } else {
-    CREDENTIALS = JSON.parse(fs.readFileSync('/tmp/gcloud-key.json', 'utf8'));
-  }
+  CREDENTIALS = JSON.parse(fs.readFileSync('/tmp/gcloud-key.json', 'utf8'));
 } catch(e) {
-  console.error('Cannot read Google credentials:', e.message);
+  console.error('Cannot read /tmp/gcloud-key.json:', e.message);
+  console.error('Make sure the workflow writes the key file before running this script.');
   process.exit(1);
 }
 if (!SPREADSHEET_ID || !CREDENTIALS) {
@@ -501,6 +498,21 @@ async function writeSLATracker(sheets) {
   });
 
   console.log(`  ✅ ${sla_rows.length} rows → "${SHEET}"`);
+}
+
+// ── Helpers for appendMode ────────────────────────────────────────────────────
+function parseDescription(desc) {
+  if (!desc) return { loadId: '', reference: '' };
+  const loadMatch = desc.match(/Load\s*ID[:\s]+(\d+)/i) || desc.match(/Load[:\s#]+(\d+)/i);
+  const refMatch  = desc.match(/Reference[:\s#]+([\w\-]+)/i);
+  return {
+    loadId:    loadMatch ? loadMatch[1] : '',
+    reference: refMatch  ? refMatch[1]  : '',
+  };
+}
+
+function getCardType(name) {
+  return cardType(name).toUpperCase();
 }
 
 async function appendMode(sheets) {
