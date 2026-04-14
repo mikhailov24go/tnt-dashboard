@@ -1,0 +1,17 @@
+{
+  "name": "trello-dashboard",
+  "version": "1.0.0",
+  "description": "Daily Trello activity export + v0 dashboard",
+  "scripts": {
+    "export-api-csv":    "node scripts/fetch-trello.js",
+    "export-api-sheets": "node scripts/fetch-trello-to-sheets.js",
+    "export-json-csv":   "node scripts/json-to-csv.js",
+    "export-json-sheets":"node scripts/json-to-sheets.js"
+  },
+  "dependencies": {
+    "googleapis": "^140.0.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
