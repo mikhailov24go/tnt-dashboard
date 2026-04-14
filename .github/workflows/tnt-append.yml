@@ -1,30 +1,12 @@
-name: Daily TnT → Sheets (append)
-
-on:
-  schedule:
-    - cron: '0 6 * * *'  # 06:00 UTC = 08:00 Валенсия
-  workflow_dispatch:
-
-jobs:
-  append:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - run: npm install
-
-      - name: Fetch Trello JSON and append to Sheets
+- name: Fetch Trello JSON and append to Sheets
         env:
-          TRELLO_API_KEY:              ${{ secrets.TRELLO_API_KEY }}
-          TRELLO_TOKEN:                ${{ secrets.TRELLO_TOKEN }}
-          TRELLO_BOARD_IDS:            ${{ secrets.TRELLO_BOARD_IDS }}
-          GOOGLE_SPREADSHEET_ID:       ${{ secrets.GOOGLE_SPREADSHEET_ID }}
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          TRELLO_API_KEY:        ${{ secrets.TRELLO_API_KEY }}
+          TRELLO_TOKEN:          ${{ secrets.TRELLO_TOKEN }}
+          TRELLO_BOARD_IDS:      ${{ secrets.TRELLO_BOARD_IDS }}
+          GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
         run: |
+          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}' > /tmp/gcloud-key.json
+          export GOOGLE_SERVICE_ACCOUNT_JSON="$(cat /tmp/gcloud-key.json)"
           mkdir -p exports
           curl -s "https://api.trello.com/1/boards/${TRELLO_BOARD_IDS}?key=${TRELLO_API_KEY}&token=${TRELLO_TOKEN}&actions=all&actions_limit=1000&cards=all&members=all&lists=all" \
             -o exports/board_today.json
