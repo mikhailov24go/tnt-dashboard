@@ -45,7 +45,17 @@ if (!fs.existsSync(inputFile)) {
 }
 
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
-const CREDENTIALS    = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || 'null');
+let CREDENTIALS = null;
+try {
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    CREDENTIALS = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  } else {
+    CREDENTIALS = JSON.parse(fs.readFileSync('/tmp/gcloud-key.json', 'utf8'));
+  }
+} catch(e) {
+  console.error('Cannot read Google credentials:', e.message);
+  process.exit(1);
+}
 if (!SPREADSHEET_ID || !CREDENTIALS) {
   console.error('Missing env: GOOGLE_SPREADSHEET_ID and GOOGLE_SERVICE_ACCOUNT_JSON');
   process.exit(1);
@@ -53,9 +63,7 @@ if (!SPREADSHEET_ID || !CREDENTIALS) {
 
 // ── Load JSON ─────────────────────────────────────────────────────────────────
 console.log(`\n📂 Loading: ${inputFile}`);
-const CREDENTIALS = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
- ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON)
- : JSON.parse(require('fs').readFileSync('/tmp/gcloud-key.json', 'utf8'));
+const board     = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
 const boardName = board.name || 'Unknown';
 const listMap   = Object.fromEntries((board.lists   || []).map(l => [l.id, l.name]));
 const memberMap = Object.fromEntries((board.members || []).map(m => [m.id, m.username || m.fullName || m.id]));
@@ -496,10 +504,9 @@ async function writeSLATracker(sheets) {
 }
 
 async function appendMode(sheets) {
-  // Legacy append mode — writes raw action rows to separate sheets
   const HEADERS = {
-    Actions:  ['Date','Board','Action ID','Type','Member','Card ID','Card Name','List Before','List After','Comment','Timestamp'],
-    Cards:    ['Date','Board','Event','Card ID','Card Name','Card Type','Member','List','Load ID','Reference','Timestamp'],
+    Actions: ['Date','Board','Action ID','Type','Member','Card ID','Card Name','List Before','List After','Comment','Timestamp'],
+    Cards:   ['Date','Board','Card ID','Card Name','Card Type','Member','List','Load ID','Reference','Comments','Checklist Done','Checklist Total','Due Complete'],
   };
   const today = new Date().toISOString().slice(0,10);
 
@@ -507,13 +514,27 @@ async function appendMode(sheets) {
     await ensureSheet(sheets, title, headers);
   }
 
-  const action_rows = allActions.map(a => [
-    a.date?.slice(0,10)||today, boardName, a.id, a.type,
-    memberMap[a.idMemberCreator]||'',
-    a.data?.card?.id||'', a.data?.card?.name||'',
-    a.data?.listBefore?.name||'', a.data?.listAfter?.name||'',
-    a.type==='commentCard'?(a.data?.text||''):'', a.date,
-  ]);
+  // ── Deduplicate Actions by Action ID ─────────────────────────────────────
+  let existingActionIds = new Set();
+  try {
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'Actions'!C:C`,
+    });
+    (existing.data.values || []).slice(1).forEach(row => {
+      if (row[0]) existingActionIds.add(row[0]);
+    });
+  } catch (e) { /* sheet empty or new */ }
+
+  const action_rows = allActions
+    .filter(a => !existingActionIds.has(a.id))
+    .map(a => [
+      a.date?.slice(0,10)||today, boardName, a.id, a.type,
+      memberMap[a.idMemberCreator]||'',
+      a.data?.card?.id||'', a.data?.card?.name||'',
+      a.data?.listBefore?.name||'', a.data?.listAfter?.name||'',
+      a.type==='commentCard'?(a.data?.text||''):'', a.date,
+    ]);
 
   if (action_rows.length) {
     await sheets.spreadsheets.values.append({
@@ -523,7 +544,42 @@ async function appendMode(sheets) {
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: action_rows },
     });
-    console.log(`  ✅ ${action_rows.length} rows → "Actions"`);
+    console.log(`  ✅ ${action_rows.length} new rows → "Actions" (skipped ${allActions.length - action_rows.length} duplicates)`);
+  } else {
+    console.log(`  ⏭  Actions: no new rows (all ${allActions.length} already exist)`);
+  }
+
+  // ── Cards: overwrite by Card ID ────────────────────────────────────────────
+  const cards = allCards;
+  const card_rows = cards.map(card => {
+    const { loadId, reference } = parseDescription(card.desc||'');
+    return [
+      today, boardName, card.id, card.name,
+      getCardType(card.name),
+      (card.idMembers||[]).map(id => memberMap[id]||id).join('; '),
+      listMap[card.idList]||card.idList,
+      loadId, reference,
+      card.badges?.comments??0,
+      card.badges?.checkItemsChecked??0,
+      (card.checklists||[]).reduce((s,cl)=>s+(cl.checkItems?.length||0),0),
+      card.dueComplete ? 'TRUE' : 'FALSE',
+    ];
+  });
+
+  // Clear and rewrite Cards sheet (cards change status over time)
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'Cards'!A2:Z`,
+  });
+  if (card_rows.length) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'Cards'!A2`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'OVERWRITE',
+      requestBody: { values: card_rows },
+    });
+    console.log(`  ✅ ${card_rows.length} rows → "Cards" (refreshed)`);
   }
 }
 
