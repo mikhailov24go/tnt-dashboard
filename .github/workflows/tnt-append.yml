@@ -1,4 +1,23 @@
-- name: Fetch Trello JSON and append to Sheets
+name: Daily TnT → Sheets (append)
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # каждый день в 06:00 UTC = 08:00 Валенсия
+  workflow_dispatch:       # ручной запуск для тестирования
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm install
+
+      - name: Fetch Trello JSON and append to Sheets
         env:
           TRELLO_API_KEY:        ${{ secrets.TRELLO_API_KEY }}
           TRELLO_TOKEN:          ${{ secrets.TRELLO_TOKEN }}
