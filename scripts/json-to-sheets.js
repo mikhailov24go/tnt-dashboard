@@ -53,7 +53,9 @@ if (!SPREADSHEET_ID || !CREDENTIALS) {
 
 // ── Load JSON ─────────────────────────────────────────────────────────────────
 console.log(`\n📂 Loading: ${inputFile}`);
-const board     = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
+const CREDENTIALS = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+ ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON)
+ : JSON.parse(require('fs').readFileSync('/tmp/gcloud-key.json', 'utf8'));
 const boardName = board.name || 'Unknown';
 const listMap   = Object.fromEntries((board.lists   || []).map(l => [l.id, l.name]));
 const memberMap = Object.fromEntries((board.members || []).map(m => [m.id, m.username || m.fullName || m.id]));
