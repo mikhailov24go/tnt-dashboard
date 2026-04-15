@@ -3,13 +3,14 @@ name: Update TnT Metrics
 on:
   schedule:
     - cron: '0 6 * * *'   # 06:00 UTC = 08:00 Валенсия
-  workflow_dispatch:       # ручной запуск
+  workflow_dispatch:       # ручной запуск из GitHub → Actions
 
 jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
       contents: write      # нужно для коммита metrics.json
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,9 +20,9 @@ jobs:
 
       - name: Fetch Trello metrics
         env:
-          TRELLO_API_KEY:  ${{ secrets.TRELLO_API_KEY }}
-          TRELLO_TOKEN:    ${{ secrets.TRELLO_TOKEN }}
-          TRELLO_BOARD_IDS: ${{ secrets.TRELLO_BOARD_IDS }}
+          TRELLO_API_KEY:    ${{ secrets.TRELLO_API_KEY }}
+          TRELLO_TOKEN:      ${{ secrets.TRELLO_TOKEN }}
+          TRELLO_BOARD_IDS:  ${{ secrets.TRELLO_BOARD_IDS }}
         run: node scripts/fetch-metrics.js
 
       - name: Commit and push metrics.json
@@ -29,5 +30,5 @@ jobs:
           git config user.name "tnt-bot"
           git config user.email "bot@truckntraceops.com"
           git add public/metrics.json
-          git diff --staged --quiet || git commit -m "chore: update metrics $(date +'%Y-%m-%d')"
+          git diff --staged --quiet || git commit -m "chore: update metrics $(date +'%Y-%m-%d %H:%M UTC')"
           git push
