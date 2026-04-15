@@ -1,0 +1,49 @@
+{
+  "updated_at": "2026-04-15T10:40:37.165Z",
+  "period_label": "Last 7 days",
+  "curr": {
+    "gps_total": 58,
+    "gps_resolved_pct": 75.9,
+    "gps_escalated_pct": 0,
+    "gps_cycle_avg": 133,
+    "gps_take_avg": 0,
+    "gps_checklist_pct": 0,
+    "gps_no_comment": 7,
+    "temp_total": 2,
+    "temp_resolved_pct": 0,
+    "temp_escalated_pct": 50,
+    "temp_avg_dev": 0,
+    "temp_over5": 0,
+    "team_total": 74,
+    "team_esc_pct": 6.8,
+    "team_cycle_avg": 133,
+    "team_no_comment": 7
+  },
+  "prev": {
+    "gps_total": 0,
+    "gps_resolved_pct": 0,
+    "gps_escalated_pct": 0,
+    "gps_cycle_avg": 0,
+    "gps_take_avg": 0,
+    "gps_checklist_pct": 0,
+    "gps_no_comment": 0,
+    "temp_total": 0,
+    "temp_resolved_pct": 0,
+    "temp_escalated_pct": 0,
+    "temp_avg_dev": 0,
+    "temp_over5": 0,
+    "team_total": 0,
+    "team_esc_pct": 0,
+    "team_cycle_avg": 0,
+    "team_no_comment": 0
+  },
+  "benchmarks": {
+    "gps_resolved_pct": 85,
+    "gps_cycle_avg": 45,
+    "gps_checklist_pct": 100,
+    "temp_resolved_pct": 90,
+    "temp_avg_dev": 5,
+    "team_esc_pct": 20,
+    "team_cycle_avg": 45
+  }
+}
