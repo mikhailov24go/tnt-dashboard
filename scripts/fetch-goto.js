@@ -54,7 +54,7 @@ async function fetchCalls(token) {
 
   console.log(`  Fetching calls: ${startTime} → ${endTime}`);
 
-  const url = `https://api.goto.com/call-events/v1/accounts/${ACCOUNT_KEY}/reports` +
+  const url = `https://api.goto.com/cr/v1/accounts/${ACCOUNT_KEY}/records` +
     `?startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}&limit=1000`;
 
   const res = await fetch(url, {
@@ -68,16 +68,18 @@ async function fetchCalls(token) {
 
   const data = await res.json();
   const calls = data.items || data.records || data.calls || data || [];
-  console.log(`  Found ${calls.length} calls`);
-  return calls;
+  const list = Array.isArray(calls) ? calls : [];
+  console.log(`  Found ${list.length} calls`);
+  return list;
 }
 
 // ── Преобразовать звонок в строку для Sheets ─────────────────────
 function callToRow(call) {
-  const ts        = call.startTime || call.callCreated || call.startedAt || '';
+  const ts        = call.startTime || call.callCreated || call.startedAt || call.created || '';
   const date      = ts ? ts.split('T')[0] : '';
-  const time      = ts ? ts.split('T')[1]?.replace('Z', '') : '';
-  const direction = (call.direction || call.callDirection || '').toUpperCase();
+  const time      = ts ? (ts.split('T')[1] || '').replace('Z', '') : '';
+  const direction = ((call.direction || call.callDirection || '')).toUpperCase();
+
   const durationSec = call.duration || call.durationSeconds ||
     (call.callEnded && call.callCreated
       ? Math.round((new Date(call.callEnded) - new Date(call.callCreated)) / 1000)
@@ -88,31 +90,33 @@ function callToRow(call) {
     .filter(p => p.role !== 'caller')
     .map(p => p.name || p.displayName || p.extension || '')
     .filter(Boolean)
-    .join(', ') || call.agentName || call.answeredBy || '';
+    .join(', ') || call.agentName || call.answeredBy || call.calleeName || '';
 
   const callerNumber = call.callerNumber || call.from || call.originatingNumber ||
     participants.find(p => p.role === 'caller')?.number || '';
 
   const statuses   = call.callStates || [];
-  const isAnswered = statuses.some(s => ['answered', 'connected'].includes((s.type || s).toLowerCase()));
-  const isMissed   = statuses.some(s => ['missed', 'unanswered', 'abandoned'].includes((s.type || s).toLowerCase()));
-  const status     = call.status || (isAnswered ? 'answered' : isMissed ? 'missed' : 'unknown');
-  const callId     = call.id || call.callId || call.callSessionId || '';
+  const isAnswered = statuses.some(s => ['answered', 'connected'].includes((s.type || s || '').toLowerCase()));
+  const isMissed   = statuses.some(s => ['missed', 'unanswered', 'abandoned'].includes((s.type || s || '').toLowerCase()));
+  const status     = call.status || call.disposition || (isAnswered ? 'answered' : isMissed ? 'missed' : 'unknown');
+
+  const callId = call.id || call.callId || call.callSessionId || call.recordId || '';
 
   return [date, time, direction, durationSec, operator, callerNumber, status, callId, ts];
 }
 
 // ── Записать в Google Sheets ─────────────────────────────────────
 async function writeToSheets(calls) {
+  const fs = require('fs');
   const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
-    require('fs').readFileSync('/tmp/gcloud-key.json', 'utf8');
+    fs.readFileSync('/tmp/gcloud-key.json', 'utf8');
 
   const auth = new google.auth.GoogleAuth({
     credentials: JSON.parse(credentialsJson),
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 
-  const sheets = google.sheets({ version: 'v4', auth });
+  const sheets    = google.sheets({ version: 'v4', auth });
   const sheetName = 'Calls';
   const HEADER    = ['Date', 'Time', 'Direction', 'Duration (sec)', 'Operator', 'Caller Number', 'Status', 'Call ID', 'Timestamp'];
 
@@ -144,8 +148,8 @@ async function writeToSheets(calls) {
     (existing.data.values || []).flat().forEach(id => existingIds.add(id));
   } catch {}
 
-  const newRows  = calls.map(callToRow).filter(row => row[7] && !existingIds.has(row[7]));
-  const skipped  = calls.length - newRows.length;
+  const newRows = calls.map(callToRow).filter(row => row[7] && !existingIds.has(row[7]));
+  const skipped = calls.length - newRows.length;
 
   if (newRows.length > 0) {
     await sheets.spreadsheets.values.append({
