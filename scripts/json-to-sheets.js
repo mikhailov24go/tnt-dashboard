@@ -567,7 +567,8 @@ async function appendMode(sheets) {
     const { loadId, reference } = parseDescription(card.desc||'');
     const createdAt = cardCreatedAt[card.id]
       ? cardCreatedAt[card.id].slice(0, 10)
-      : '';
+      : new Date(parseInt(card.id.slice(0, 8), 16) * 1000)
+          .toISOString().slice(0, 10);
     return [
       today, boardName, card.id, card.name,
       getCardType(card.name),
