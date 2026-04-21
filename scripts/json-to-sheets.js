@@ -518,7 +518,7 @@ function getCardType(name) {
 async function appendMode(sheets) {
   const HEADERS = {
     Actions: ['Date','Board','Action ID','Type','Member','Card ID','Card Name','List Before','List After','Comment','Timestamp'],
-    Cards:   ['Date','Board','Card ID','Card Name','Card Type','Member','List','Load ID','Reference','Comments','Checklist Done','Checklist Total','Due Complete'],
+    Cards:   ['Date','Board','Card ID','Card Name','Card Type','Created Date','Member','List','Load ID','Reference','Comments','Checklist Done','Checklist Total','Due Complete'],
   };
   const today = new Date().toISOString().slice(0,10);
 
@@ -565,9 +565,13 @@ async function appendMode(sheets) {
   const cards = allCards;
   const card_rows = cards.map(card => {
     const { loadId, reference } = parseDescription(card.desc||'');
+    const createdAt = cardCreatedAt[card.id]
+      ? cardCreatedAt[card.id].slice(0, 10)
+      : '';
     return [
       today, boardName, card.id, card.name,
       getCardType(card.name),
+      createdAt,
       (card.idMembers||[]).map(id => memberMap[id]||id).join('; '),
       listMap[card.idList]||card.idList,
       loadId, reference,
