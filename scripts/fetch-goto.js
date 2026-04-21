@@ -54,8 +54,8 @@ async function fetchCalls(token) {
 
   console.log(`  Fetching calls: ${startTime} → ${endTime}`);
 
-  const url = `https://api.goto.com/cr/v1/accounts/${ACCOUNT_KEY}/records` +
-    `?startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}&limit=1000`;
+  const url = `https://api.goto.com/call-events-report/v1/report-summaries` +
+    `?accountKey=${ACCOUNT_KEY}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}&pageSize=1000`;
 
   const res = await fetch(url, {
     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
