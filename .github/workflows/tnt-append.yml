@@ -34,13 +34,7 @@ jobs:
           mkdir -p exports
           curl -s "https://api.trello.com/1/boards/${TRELLO_BOARD_IDS}?key=${TRELLO_API_KEY}&token=${TRELLO_TOKEN}&actions=all&actions_limit=1000&cards=all&members=all&lists=all" \
             -o exports/board_today.json
+          echo "=== Trello response (first 50 chars) ==="
+          head -c 50 exports/board_today.json
+          echo ""
           node scripts/json-to-sheets.js exports/board_today.json --mode=append
-
-      - name: GoTo Connect → Sheets (Calls)
-        env:
-          GOTO_CLIENT_ID:        ${{ secrets.GOTO_CLIENT_ID }}
-          GOTO_CLIENT_SECRET:    ${{ secrets.GOTO_CLIENT_SECRET }}
-          GOTO_PAT:              ${{ secrets.GOTO_PAT }}
-          GOTO_ACCOUNT_KEY:      ${{ secrets.GOTO_ACCOUNT_KEY }}
-          GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
-        run: node scripts/fetch-goto.js
